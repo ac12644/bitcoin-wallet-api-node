@@ -8,8 +8,6 @@
 
 Welcome to **Learn Bitcoin Backend**, an interactive API + minimal UI for experimenting with Bitcoin wallets, transactions, fees, and tooling. It’s a playground you can run locally to learn how wallet backends work.
 
-> ⚠️ **Safety**: This is a learning project. Keys are stored locally (encrypted) using Node’s filesystem. **Do not use with real funds.**
-
 ---
 
 ## What’s Inside
