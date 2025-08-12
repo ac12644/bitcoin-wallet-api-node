@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Bitcoin Wallet Playground</title>
+    <meta
+      name="description"
+      content="Simple wallet-style UI to test your Bitcoin API."
+    />
+    <link
+      rel="icon"
+      href="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/800px-Bitcoin.svg.png"
+      type="image/x-icon"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.17/tailwind.min.css"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+      :root {
+        --brand: #f2a900;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: #0f1115;
+        color: #e5e7eb;
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto,
+          sans-serif;
+      }
+      .card {
+        background: #161a22;
+        border: 1px solid #202636;
+        border-radius: 14px;
+      }
+      .btn {
+        background: var(--brand);
+        color: #111827;
+        border-radius: 10px;
+        font-weight: 700;
+        transition: transform 0.04s ease;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn-outline {
+        background: transparent;
+        border: 1px solid #2b3346;
+        color: #e5e7eb;
+        border-radius: 10px;
+      }
+      .input {
+        background: #0c0f14;
+        border: 1px solid #1f2534;
+        color: #e5e7eb;
+        border-radius: 10px;
+      }
+      .badge {
+        background: #0c0f14;
+        border: 1px solid #263047;
+        border-radius: 999px;
+      }
+      .chip {
+        background: #0c0f14;
+        border: 1px solid #1f2534;
+        border-radius: 8px;
+      }
+      .ring-brand {
+        box-shadow: 0 0 0 3px rgba(242, 169, 0, 0.18);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+          "Liberation Mono", monospace;
+      }
+      .console {
+        background: #0b0d11;
+        border: 1px solid #1b2130;
+        border-radius: 12px;
+        max-height: 360px;
+        overflow: auto;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .toast {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        background: #131722;
+        border: 1px solid #2a3347;
+        color: #e5e7eb;
+        padding: 10px 14px;
+        border-radius: 10px;
+        display: none;
+      }
+      .skeleton {
+        background: linear-gradient(90deg, #0f131c, #121826, #0f131c);
+        background-size: 200% 100%;
+        animation: shimmer 1.3s infinite;
+      }
+      @keyframes shimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      a.link {
+        color: #9cc2ff;
+      }
+      .hint {
+        font-size: 11px;
+        color: #9aa3b2;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header
+      class="sticky top-0 z-20 border-b border-gray-800/60 backdrop-filter backdrop-blur bg-black/40"
+    >
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg"
+          class="w-7 h-7"
+          alt="₿"
+        />
+        <div class="font-bold tracking-tight text-lg">
+          Bitcoin Wallet Playground
+        </div>
+        <span id="networkBadge" class="badge px-3 py-1 text-xs ml-2"
+          >Network: <span id="netLabel">testnet</span></span
+        >
+        <div class="flex-1"></div>
+        <button id="btnEstimate" class="btn-outline px-3 py-2 text-sm">
+          Fee estimate
+        </button>
+        <button id="btnClearConsole" class="btn-outline px-3 py-2 text-sm ml-2">
+          Clear console
+        </button>
+        <a
+          class="btn-outline px-3 py-2 text-sm ml-2"
+          href="https://github.com/ac12644/bitcoin-backend-playground"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub</a
+        >
+      </div>
+    </header>
+
+    <main
+      class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6"
+    >
+      <!-- Left: Wallet panel -->
+      <section class="lg:col-span-2 space-y-6">
+        <!-- Active wallet summary -->
+        <div class="card p-4 md:p-5">
+          <div
+            class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+          >
+            <div>
+              <div class="text-sm text-gray-400">Active address</div>
+              <div class="mt-1 mono text-sm break-all" id="activeAddress">
+                —
+              </div>
+              <div class="mt-2 flex gap-2">
+                <button
+                  id="btnCopyAddr"
+                  class="btn-outline px-3 py-1.5 text-xs"
+                >
+                  Copy
+                </button>
+                <button
+                  id="btnSetManual"
+                  class="btn-outline px-3 py-1.5 text-xs"
+                >
+                  Set manually
+                </button>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-gray-400">
+                Balance (confirmed / pending)
+              </div>
+              <div class="mt-1 text-2xl font-bold" id="balanceText">—</div>
+              <div class="text-xs text-gray-500" id="balanceSats">—</div>
+              <div class="mt-2">
+                <button id="btnRefresh" class="btn px-3 py-2 text-sm">
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions: Receive / Send -->
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Receive -->
+          <div class="card p-4 md:p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold">Receive</h3>
+              <span class="chip px-2 py-1 text-xs">BIP21 + QR</span>
+            </div>
+            <form id="receiveForm" class="mt-3 space-y-3">
+              <div>
+                <label class="text-xs text-gray-400">Address</label>
+                <input
+                  id="recvAddress"
+                  type="text"
+                  class="input w-full px-3 py-2 mt-1"
+                  placeholder="Your address (auto-fills from Active)"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-400">Amount (BTC)</label>
+                  <input
+                    id="recvAmount"
+                    type="text"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="0.001"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400"
+                    >Message (optional)</label
+                  >
+                  <input
+                    id="recvMsg"
+                    type="text"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="Invoice #123"
+                  />
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="btn px-4 py-2" type="submit">Generate QR</button>
+                <button
+                  id="btnCopyBip21"
+                  class="btn-outline px-4 py-2"
+                  type="button"
+                >
+                  Copy BIP21
+                </button>
+              </div>
+            </form>
+            <div id="qrArea" class="mt-4 hidden">
+              <div class="text-xs text-gray-400 mb-2">Payment request</div>
+              <img
+                id="qrImg"
+                class="w-40 h-40 border border-gray-700 rounded-lg"
+              />
+              <div class="mono text-xs mt-2 break-all" id="bip21Text"></div>
+            </div>
+          </div>
+
+          <!-- Send -->
+          <div class="card p-4 md:p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold">Send</h3>
+              <span class="chip px-2 py-1 text-xs">Single-sig</span>
+            </div>
+            <form id="sendForm" class="mt-3 space-y-3">
+              <div>
+                <label class="text-xs text-gray-400">To address</label>
+                <input
+                  id="sendTo"
+                  type="text"
+                  class="input w-full px-3 py-2 mt-1"
+                  placeholder="tb1p..."
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-400">Amount (BTC)</label>
+                  <input
+                    id="sendAmount"
+                    type="text"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="0.001"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Fee estimate</label>
+                  <div class="mt-1 px-3 py-2 input">
+                    <span id="feeLabel">—</span>
+                    <span class="text-xs text-gray-500">(sat/vB)</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">Wallet password</label>
+                <input
+                  id="sendPass"
+                  type="password"
+                  class="input w-full px-3 py-2 mt-1"
+                  placeholder="Required to unlock key"
+                />
+                <div class="hint mt-1">
+                  Used to decrypt the stored key for the active wallet.
+                </div>
+              </div>
+              <button class="btn w-full py-2.5" type="submit">Send BTC</button>
+            </form>
+            <div id="sendResult" class="mt-3 text-sm hidden">
+              <div class="text-gray-400">Broadcasted TxID</div>
+              <div class="mono break-all mt-1" id="txidOut">—</div>
+              <button
+                id="btnCopyTxid"
+                class="btn-outline px-3 py-1.5 text-xs mt-2"
+              >
+                Copy TxID
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tools -->
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Verify Tx -->
+          <div class="card p-4 md:p-5">
+            <h3 class="font-semibold">Verify transaction</h3>
+            <form id="verifyForm" class="mt-3 space-y-3">
+              <div>
+                <label class="text-xs text-gray-400">TxID(s)</label>
+                <input
+                  id="verifyTxids"
+                  type="text"
+                  class="input w-full px-3 py-2 mt-1"
+                  placeholder="comma separated"
+                />
+              </div>
+              <button class="btn w-full py-2.5" type="submit">Verify</button>
+            </form>
+            <div id="verifyOut" class="mt-3 mono text-xs"></div>
+          </div>
+
+          <!-- Time-lock -->
+          <div class="card p-4 md:p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold">Time-locked tx</h3>
+              <span class="chip px-2 py-1 text-xs">nLockTime</span>
+            </div>
+            <form id="lockForm" class="mt-3 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-400">Recipient</label>
+                  <input
+                    id="lockTo"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="tb1..."
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Amount (BTC)</label>
+                  <input
+                    id="lockAmt"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="0.001"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Wallet password</label>
+                  <input
+                    id="lockPass"
+                    type="password"
+                    class="input w-full px-3 py-2 mt-1"
+                    placeholder="Required to unlock key"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-400"
+                  >Unlock time (Unix seconds)</label
+                >
+                <input
+                  id="lockTs"
+                  class="input w-full px-3 py-2 mt-1"
+                  placeholder="e.g. 1767225600"
+                />
+              </div>
+              <button class="btn w-full py-2.5" type="submit">Build</button>
+            </form>
+            <div id="lockOut" class="mt-3 mono text-xs break-all"></div>
+          </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="card p-4 md:p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold">Transactions</h3>
+            <button id="btnLoadTxs" class="btn-outline px-3 py-2 text-sm">
+              Load
+            </button>
+          </div>
+          <div id="txList" class="mt-3 space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- Right: Wallet Manager, Dev Console & Generators -->
+      <aside class="space-y-6">
+        <!-- Wallet Manager -->
+        <div class="card p-4 md:p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold">Wallets</h3>
+            <button id="btnNewLabel" class="btn-outline px-3 py-1.5 text-xs">
+              Rename
+            </button>
+          </div>
+          <div id="walletList" class="mt-3 space-y-2"></div>
+          <div class="mt-3 text-xs text-gray-500">
+            Click “Use” to set active • Single = encrypted WIF; HD = encrypted
+            mnemonic (watch-only root)
+          </div>
+        </div>
+
+        <!-- Generators -->
+        <div class="card p-4 md:p-5">
+          <h3 class="font-semibold">Wallet generators</h3>
+          <div class="mt-3 grid grid-cols-1 gap-3">
+            <!-- Single wallet with password -->
+            <form id="singleForm" class="space-y-2">
+              <input
+                id="singlePass"
+                type="password"
+                class="input w-full px-3 py-2"
+                placeholder="Single wallet password"
+              />
+              <button class="btn w-full py-2.5" type="submit">
+                Create single wallet
+              </button>
+            </form>
+
+            <!-- HD create -->
+            <form id="hdForm" class="space-y-2">
+              <input
+                id="hdPass"
+                type="password"
+                class="input w-full px-3 py-2"
+                placeholder="HD wallet password"
+              />
+              <button class="btn w-full py-2.5" type="submit">
+                Create HD wallet
+              </button>
+            </form>
+
+            <!-- HD import -->
+            <form id="importForm" class="space-y-2">
+              <input
+                id="mnemonic"
+                class="input w-full px-3 py-2"
+                placeholder="Mnemonic"
+              />
+              <input
+                id="impPass"
+                type="password"
+                class="input w-full px-3 py-2"
+                placeholder="Password"
+              />
+              <button class="btn w-full py-2.5" type="submit">
+                Import HD (mnemonic)
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Console -->
+        <div class="card p-4 md:p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold">Console</h3>
+            <span class="text-xs text-gray-400">Raw JSON responses</span>
+          </div>
+          <pre id="console" class="console mt-3 p-3 mono">Ready.</pre>
+        </div>
+      </aside>
+    </main>
+
+    <div id="toast" class="toast">Copied!</div>
+
+    <script>
+      // ------------------ helpers ------------------
+      const $ = (id) => document.getElementById(id);
+      const toast = (msg) => {
+        const el = $("toast");
+        el.textContent = msg;
+        el.style.display = "block";
+        setTimeout(() => (el.style.display = "none"), 1400);
+      };
+      const log = (obj, label = "") => {
+        const pre = $("console");
+        const ts = new Date().toLocaleTimeString();
+        pre.textContent +=
+          "\\n\\n[" + ts + "] " + label + "\\n" + JSON.stringify(obj, null, 2);
+        pre.scrollTop = pre.scrollHeight;
+      };
+      const fetchJson = async (url, opts = {}) => {
+        const res = await fetch(url, opts);
+        const txt = await res.text();
+        let data;
+        try {
+          data = JSON.parse(txt);
+        } catch {
+          data = { raw: txt };
+        }
+        if (!res.ok)
+          throw Object.assign(new Error("HTTP " + res.status), { data });
+        return data;
+      };
+
+      // ------------------ Wallet Manager (localStorage) ------------------
+      // schema per wallet: { id, type:'single'|'hd'|'multisig', address, xpub?, label?, createdAt, serverId? }
+      const WKEY = "walletsV2";
+      const ACTIVE = "activeWalletId";
+
+      function getWallets() {
+        try {
+          return JSON.parse(localStorage.getItem(WKEY) || "[]");
+        } catch {
+          return [];
+        }
+      }
+      function saveWallets(list) {
+        localStorage.setItem(WKEY, JSON.stringify(list));
+      }
+      function addWallet(w) {
+        const list = getWallets();
+        const id = crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now() + Math.random());
+        list.push({ id, createdAt: Date.now(), ...w });
+        saveWallets(list);
+        return id;
+      }
+      function setActiveWalletId(id) {
+        localStorage.setItem(ACTIVE, id);
+        const w = getWallets().find((x) => x.id === id);
+        state.addr = w?.address || "";
+        renderWalletList();
+        refreshBalance();
+        $("txList").innerHTML = "";
+      }
+      function getActiveWallet() {
+        const id = localStorage.getItem(ACTIVE);
+        return getWallets().find((w) => w.id === id) || null;
+      }
+
+      function renderWalletList() {
+        const list = getWallets();
+        const active = getActiveWallet();
+        const wrap = $("walletList");
+        if (!list.length) {
+          wrap.innerHTML =
+            '<div class="text-sm text-gray-400">No wallets yet.</div>';
+          return;
+        }
+        wrap.innerHTML = list
+          .map((w) => {
+            const isActive = active?.id === w.id;
+            const title = w.label || (w.type ? w.type.toUpperCase() : "WALLET");
+            return `
+            <div class="flex items-center justify-between p-2 rounded-lg border ${
+              isActive ? "ring-brand border-gray-700" : "border-gray-800/60"
+            }">
+              <div>
+                <div class="text-sm font-semibold">${title}${
+              w.serverId ? "" : ' <span class="hint">(legacy local)</span>'
+            }</div>
+                <div class="mono text-xs break-all">${w.address}</div>
+                ${
+                  w.xpub
+                    ? `<div class="mono text-xs text-gray-400 break-all mt-1">xpub: ${w.xpub}</div>`
+                    : ""
+                }
+              </div>
+              <div class="flex items-center gap-2">
+                <button data-id="${
+                  w.id
+                }" class="btn-outline px-2 py-1.5 text-xs act-set">Use</button>
+                <button data-id="${
+                  w.id
+                }" class="btn-outline px-2 py-1.5 text-xs act-copy">Copy</button>
+                <button data-id="${
+                  w.id
+                }" class="btn-outline px-2 py-1.5 text-xs act-del">Del</button>
+              </div>
+            </div>`;
+          })
+          .join("");
+
+        // wire actions
+        wrap
+          .querySelectorAll(".act-set")
+          .forEach((b) => (b.onclick = () => setActiveWalletId(b.dataset.id)));
+        wrap.querySelectorAll(".act-copy").forEach(
+          (b) =>
+            (b.onclick = () => {
+              const w = getWallets().find((x) => x.id === b.dataset.id);
+              if (w?.address) {
+                navigator.clipboard.writeText(w.address);
+                toast("Address copied");
+              }
+            })
+        );
+        wrap.querySelectorAll(".act-del").forEach(
+          (b) =>
+            (b.onclick = () => {
+              const id = b.dataset.id;
+              const list2 = getWallets().filter((x) => x.id !== id);
+              saveWallets(list2);
+              if (localStorage.getItem(ACTIVE) === id) {
+                localStorage.removeItem(ACTIVE);
+                state.addr = "";
+              }
+              renderWalletList();
+              renderActive();
+              refreshBalance();
+              $("txList").innerHTML = "";
+            })
+        );
+      }
+
+      $("btnNewLabel").onclick = () => {
+        const w = getActiveWallet();
+        if (!w) return toast("No active wallet");
+        const label = prompt("Set label", w.label || "");
+        if (label === null) return;
+        const list = getWallets().map((x) =>
+          x.id === w.id ? { ...x, label } : x
+        );
+        saveWallets(list);
+        renderWalletList();
+      };
+
+      // One-off migration from old single cache
+      (function migrateV1() {
+        const old = localStorage.getItem("lastCreatedWallet");
+        const list = getWallets();
+        if (old && list.length === 0) {
+          try {
+            const w = JSON.parse(old);
+            if (w?.address) {
+              const id = addWallet({
+                type: "single",
+                address: w.address,
+                label: "Legacy Single",
+              });
+              setActiveWalletId(id);
+            }
+            localStorage.removeItem("lastCreatedWallet");
+          } catch {}
+        }
+      })();
+
+      // ------------------ basic state ------------------
+      const state = {
+        get addr() {
+          return getActiveWallet()?.address || "";
+        },
+        set addr(v) {
+          const active = getActiveWallet();
+          if (active) {
+            const list = getWallets().map((x) =>
+              x.id === active.id
+                ? { ...x, address: v, label: x.label || "Manual" }
+                : x
+            );
+            saveWallets(list);
+          } else {
+            const id = addWallet({
+              type: "single",
+              address: v,
+              label: "Manual",
+            });
+            localStorage.setItem(ACTIVE, id);
+          }
+          renderActive();
+          renderWalletList();
+        },
+      };
+
+      // Network label
+      $("netLabel").textContent = localStorage.getItem("network") || "testnet";
+
+      // ------------------ active address render ------------------
+      function renderActive() {
+        $("activeAddress").textContent = state.addr || "—";
+        $("recvAddress").value = state.addr || "";
+      }
+
+      // ------------------ balance & txs ------------------
+      async function refreshBalance() {
+        if (!state.addr) return;
+        try {
+          const data = await fetchJson(
+            "/transactions/balance/" + encodeURIComponent(state.addr)
+          );
+          const confirmed = Number(data.confirmedBTC ?? 0);
+          $("balanceText").textContent = confirmed.toFixed(8) + " BTC";
+          $("balanceSats").textContent = `${
+            data.confirmedSats ?? 0
+          } sats  •  pending ${data.pendingSats ?? 0} sats`;
+          log(data, "GET /transactions/balance");
+        } catch (e) {
+          log(e.data || { error: e.message }, "Balance error");
+        }
+      }
+
+      async function loadTxs() {
+        if (!state.addr) return;
+        $("txList").innerHTML = '<div class="skeleton h-20 rounded-md"></div>';
+        try {
+          const data = await fetchJson(
+            "/transactions/" + encodeURIComponent(state.addr)
+          );
+          log(data, "GET /transactions");
+          const txs = Array.isArray(data.transactions) ? data.transactions : [];
+          if (!txs.length) {
+            $("txList").innerHTML =
+              '<div class="text-sm text-gray-400">No transactions.</div>';
+            return;
+          }
+          $("txList").innerHTML = txs
+            .slice(0, 20)
+            .map((tx) => {
+              const id = tx.txid || tx.id || "unknown";
+              const conf =
+                tx.status && tx.status.confirmed ? "confirmed" : "unconfirmed";
+              return `
+              <div class="flex items-center justify-between p-3 rounded-lg border border-gray-800/60">
+                <div class="mono text-xs break-all">${id}</div>
+                <span class="px-2 py-1 text-xs rounded ${
+                  conf === "confirmed"
+                    ? "bg-green-900/40 text-green-300"
+                    : "bg-yellow-900/30 text-yellow-200"
+                }">${conf}</span>
+              </div>`;
+            })
+            .join("");
+        } catch (e) {
+          $("txList").innerHTML =
+            '<div class="text-sm text-red-300">Failed to load.</div>';
+          log(e.data || { error: e.message }, "Tx error");
+        }
+      }
+
+      // ------------------ fee estimate ------------------
+      async function updateFeeLabel() {
+        try {
+          const data = await fetchJson("/estimateFee");
+          $("feeLabel").textContent = data.feerateSatPerVb ?? "—";
+          log(data, "GET /estimateFee");
+        } catch (e) {
+          $("feeLabel").textContent = "—";
+          log(e.data || { error: e.message }, "Fee error");
+        }
+      }
+
+      // ------------------ actions ------------------
+      $("btnCopyAddr").onclick = () => {
+        if (!state.addr) return;
+        navigator.clipboard.writeText(state.addr);
+        toast("Address copied");
+      };
+
+      $("btnSetManual").onclick = async () => {
+        const v = prompt("Paste address");
+        if (v) {
+          state.addr = v.trim();
+          await refreshBalance();
+        }
+      };
+
+      $("btnRefresh").onclick = refreshBalance;
+      $("btnLoadTxs").onclick = loadTxs;
+      $("btnEstimate").onclick = updateFeeLabel;
+      $("btnClearConsole").onclick = () => {
+        $("console").textContent = "Cleared.";
+      };
+
+      // Receive (QR / BIP21)
+      $("receiveForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const address = $("recvAddress").value.trim() || state.addr;
+        const amount = $("recvAmount").value.trim();
+        const message = $("recvMsg").value.trim();
+        if (!address || !amount) return toast("Address and amount required");
+        try {
+          const url =
+            "/payment/payment-request-qr?address=" +
+            encodeURIComponent(address) +
+            "&amount=" +
+            encodeURIComponent(amount) +
+            "&message=" +
+            encodeURIComponent(message || "");
+          const data = await fetchJson(url);
+          $("qrArea").classList.remove("hidden");
+          $("qrImg").src = data.dataUrl || data.qrCodeImageUrl;
+          $("bip21Text").textContent = data.bip21 || "";
+          $("btnCopyBip21").onclick = () => {
+            if (data.bip21) {
+              navigator.clipboard.writeText(data.bip21);
+              toast("BIP21 copied");
+            }
+          };
+          log(data, "GET /payment/payment-request-qr");
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "QR error");
+        }
+      });
+
+      // Send
+      $("sendForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const to = $("sendTo").value.trim();
+        const amount = $("sendAmount").value.trim();
+        const password = $("sendPass").value;
+        if (!to || !amount) return toast("To & amount required");
+        if (!password) return toast("Password required");
+        try {
+          const active = getActiveWallet();
+          const body = {
+            to,
+            amount,
+            password,
+            fromAddress: active?.address || undefined,
+            walletId: active?.serverId || undefined,
+          };
+          const data = await fetchJson("/sendbtc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          $("sendResult").classList.remove("hidden");
+          $("txidOut").textContent = data.txId || "—";
+          $("btnCopyTxid").onclick = () => {
+            if (data.txId) {
+              navigator.clipboard.writeText(data.txId);
+              toast("TxID copied");
+            }
+          };
+          log(data, "POST /sendbtc");
+          $("sendPass").value = ""; // clear
+          refreshBalance();
+          loadTxs();
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "Send error");
+        }
+      });
+
+      // Verify
+      $("verifyForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const ids = $("verifyTxids")
+          .value.split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (!ids.length) return toast("Enter at least one TxID");
+        try {
+          const data = await fetchJson("/verifyTx", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ txids: ids }),
+          });
+          $("verifyOut").textContent = JSON.stringify(data, null, 2);
+          log(data, "POST /verifyTx");
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "Verify error");
+        }
+      });
+
+      // Time-lock
+      $("lockForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const recipientAddress = $("lockTo").value.trim();
+        const amountInBTC = $("lockAmt").value.trim();
+        const timestamp = $("lockTs").value.trim();
+        const password = $("lockPass").value;
+        if (!recipientAddress || !amountInBTC || !timestamp)
+          return toast("All fields required");
+        if (!password) return toast("Password required");
+
+        try {
+          const active = getActiveWallet();
+          const body = {
+            recipientAddress,
+            amountInBTC,
+            timestamp,
+            password,
+            fromAddress: active?.address || undefined,
+            walletId: active?.serverId || undefined,
+          };
+          const data = await fetchJson("/timeLock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          $("lockOut").textContent = JSON.stringify(data, null, 2);
+          log(data, "POST /timeLock");
+          $("lockPass").value = "";
+        } catch (e2) {
+          $("lockOut").textContent = "Failed.";
+          log(e2.data || { error: e2.message }, "TimeLock error");
+        }
+      });
+
+      // Generators wired to Wallet Manager
+      $("singleForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const password = $("singlePass").value;
+        if (!password) return toast("Password required");
+        try {
+          const data = await fetchJson("/wallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          log(data, "POST /wallet");
+          if (data.address) {
+            const id = addWallet({
+              type: "single",
+              address: data.address,
+              label: "Single Wallet",
+              serverId: data.id, // save server id for signing
+            });
+            setActiveWalletId(id);
+            toast("Wallet created & set active");
+          }
+          $("singlePass").value = "";
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "Create wallet error");
+        }
+      });
+
+      $("hdForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const password = $("hdPass").value;
+        if (!password) return toast("Password required");
+        try {
+          const data = await fetchJson("/wallet/hd", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          log(data, "POST /wallet/hd");
+          const id = addWallet({
+            type: "hd",
+            address: data.address,
+            xpub: data.xpub,
+            label: "HD Wallet",
+            serverId: data.id,
+          });
+          setActiveWalletId(id);
+          toast("HD wallet created");
+          $("hdPass").value = "";
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "HD error");
+        }
+      });
+
+      $("importForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const mnemonic = $("mnemonic").value.trim();
+        const password = $("impPass").value;
+        if (!mnemonic || !password)
+          return toast("Mnemonic & password required");
+        try {
+          const data = await fetchJson("/wallet/retrieve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mnemonic, password }),
+          });
+          log(data, "POST /wallet/retrieve");
+          const id = addWallet({
+            type: "hd",
+            address: data.address,
+            xpub: data.xpub,
+            label: "Imported HD",
+            serverId: data.id,
+          });
+          setActiveWalletId(id);
+          toast("Imported (watch-only root)");
+          $("mnemonic").value = "";
+          $("impPass").value = "";
+        } catch (e2) {
+          log(e2.data || { error: e2.message }, "Import error");
+        }
+      });
+
+      // bootstrap
+      function renderActive() {
+        $("activeAddress").textContent = state.addr || "—";
+        $("recvAddress").value = state.addr || "";
+      }
+      renderActive();
+      renderWalletList();
+      if (state.addr) {
+        refreshBalance();
+        loadTxs();
+      }
+      updateFeeLabel();
+    </script>
+  </body>
+</html>

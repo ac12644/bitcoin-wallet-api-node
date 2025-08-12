@@ -1,0 +1,26 @@
+{
+  "name": "bitcoin-wallet-api-node",
+  "version": "1.1.0",
+  "description": "Password-protected Bitcoin wallet backend (Node/Express + bitcore). Create single/HD wallets, send (RBF), time-lock, QR (BIP21), fee estimates, mempool.space integration. Testnet-ready.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/kms": "^3.6.0",
+    "axios": "^1.4.0",
+    "bcrypt": "^5.1.1",
+    "bitcore-lib": "^10.0.5",
+    "bitcore-mnemonic": "^10.0.5",
+    "body-parser": "^1.20.2",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.2.0",
+    "express": "^4.18.2",
+    "google-p12-pem": "^4.0.1",
+    "node-localstorage": "^2.2.1",
+    "qrcode": "^1.5.3",
+    "zod": "^4.0.17"
+  }
+}

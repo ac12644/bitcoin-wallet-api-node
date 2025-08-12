@@ -1,0 +1,64 @@
+# -------------------------
+# Node / Runtime
+# -------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.cache/
+.tmp/
+tmp/
+dist/
+build/
+coverage/
+.nyc_output/
+
+# -------------------------
+# Logs & PIDs
+# -------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.seed
+
+# -------------------------
+# Environment files
+# (keep a template if you want)
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Project data directories
+# -------------------------
+/scratch/     
+/qrCodes/     
+/keystore/     
+
+# -------------------------
+# Keys / Secrets (defensive)
+# -------------------------
+cryptokey.pem
+*.pem
+*.key
+*.p12
+
+# -------------------------
+# Editors / OS junk
+# -------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Misc tool caches
+# -------------------------
+.eslintcache
+.parcel-cache/
