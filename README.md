@@ -44,8 +44,8 @@ Welcome to **Learn Bitcoin Backend**, an interactive API + minimal UI for experi
 
 ```bash
 # 1) Clone
-git clone https://github.com/ac12644/bitcoin-api-playground.git
-cd bitcoin-api-playground
+git clone https://github.com/ac12644/bitcoin-wallet-api-node.git
+cd bitcoin-wallet-api-node
 
 # 2) Install
 npm install
@@ -369,9 +369,9 @@ PRs and issues welcome! Spot a bug or want a feature? File an issue or open a PR
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
-[forks-shield]: https://img.shields.io/github/forks/ac12644/bitcoin-api-playground?style=for-the-badge
-[forks-url]: https://github.com/ac12644/bitcoin-api-playground/network/members
-[stars-shield]: https://img.shields.io/github/stars/ac12644/bitcoin-api-playground?style=for-the-badge
-[stars-url]: https://github.com/ac12644/bitcoin-api-playground/stargazers
-[issues-shield]: https://img.shields.io/github/issues/ac12644/bitcoin-api-playground?style=for-the-badge
-[issues-url]: https://github.com/ac12644/bitcoin-api-playground/issues
+[forks-shield]: https://img.shields.io/github/forks/ac12644/bitcoin-wallet-api-node?style=for-the-badge
+[forks-url]: https://github.com/ac12644/bitcoin-wallet-api-node/network/members
+[stars-shield]: https://img.shields.io/github/stars/ac12644/bitcoin-wallet-api-node?style=for-the-badge
+[stars-url]: https://github.com/ac12644/bitcoin-wallet-api-node/stargazers
+[issues-shield]: https://img.shields.io/github/issues/ac12644/bitcoin-wallet-api-node?style=for-the-badge
+[issues-url]: https://github.com/ac12644/bitcoin-wallet-api-node/issues
