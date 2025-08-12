@@ -4,368 +4,533 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 
-# Learn Bitcoin Backend For Wallets
+# Bitcoin Wallet API (TypeScript) — Password-Protected Keystore
 
-Welcome to **Learn Bitcoin Backend**, an interactive API + minimal UI for experimenting with Bitcoin wallets, transactions, fees, and tooling. It’s a playground you can run locally to learn how wallet backends work.
+> A learning-friendly Bitcoin wallet backend in **TypeScript** with a simple web UI.
+> Create single/HD wallets, store keys encrypted with a **password-protected keystore**, send BTC (RBF), build **time-locked** transactions, generate BIP21 + QR codes, estimate fees, verify txs, and query balances/tx history from mempool.space. **Testnet-ready** by default.
+
+<p align="center">   <img src="asset/screenshot.png" alt="Playground screenshot" width="520"/> </p>
+
+## Highlights
+
+- **TypeScript** Node/Express backend
+- **Keystore**: AES-256-GCM with scrypt key derivation + bcrypt password hash
+- **Single wallets** (encrypted WIF) & **HD wallets** (encrypted BIP39 mnemonic)
+- **Send BTC** (RBF), **time-lock** (nLockTime), **reimburse**
+- **BIP21 + QR** generator
+- **Fee estimate** (sat/vB) and basic **address validation**
+- **Balance & transactions** via mempool.space
+- Minimal **index.html** UI (no build step)
+- Clean migration away from legacy _bitcore_ to **bitcoinjs-lib** + **@scure/bip32/bip39**
 
 ---
 
-## What’s Inside
+## Stack
 
-- Password-protected **keystore** for Single and HD wallets (AES-256-GCM + scrypt + bcrypt)
-- Clean **wallet-like UI** (`index.html`) to test endpoints
-- Mempool.space API for UTXOs, broadcasting, and fee estimates
-- Shared fee utility (avg sat/vB across near-term targets)
-- RBF enabled transactions, dust checks, network-aware address validation
+- Runtime: Node.js 18+
+- Language: TypeScript
+- Web: Express
+- Bitcoin: `bitcoinjs-lib`, `@scure/bip32`, `@scure/bip39`, `tiny-secp256k1`
+- Crypto: Node `crypto` (AES-256-GCM, scrypt), `bcrypt`
+- Data: `node-localstorage` (filesystem) — **for demos only**
+- HTTP: `axios`
+- QR: `qrcode`
 
-## Project Checklist
+---
 
-<a href="https://github.com/ac12644/bitcoin-wallet-api-node/blob/main/asset/screenshot.png?raw=1" target="_blank" rel="noopener noreferrer">
-  <img align="right" src="asset/screenshot.png" width="450" height="450" alt="Project screenshot" />
-</a>
-
-- [x] Create single wallet (encrypted WIF)
-- [x] Create HD wallet (encrypted mnemonic)
-- [x] Create Multisig wallet
-- [x] Import HD from MNEMONIC
-- [x] Get balance of an address
-- [x] Get transactions of an address
-- [x] Verify transaction
-- [x] Send transaction (RBF)
-- [x] Receive via BIP21 + QR
-- [x] Create time-lock transaction
-- [x] Estimate transaction fee
-- [x] Validate Bitcoin address
-- [x] Fetch historical Bitcoin data
-- [x] Reimburse endpoint
-- [ ] Recurring payments
-
-## Getting Started
+## Quick Start
 
 ```bash
-# 1) Clone
-git clone https://github.com/ac12644/bitcoin-wallet-api-node.git
-cd bitcoin-wallet-api-node
-
-# 2) Install
+# 1) Install
 npm install
 
-# 3) (Optional) Configure
-# Defaults to testnet. You can set NETWORK=mainnet to switch.
-# export NETWORK=testnet|mainnet
-# export PORT=3000
-
-# 4) Run
+# 2) Dev run (watch)
 npm run dev
+
+# 3) Or build + start
+npm run build
+npm start
 ```
 
-Open http://localhost:3000 for the wallet-style UI.
+Open http://localhost:3000 to use the Playground UI.
 
-**Default network:** `testnet` (uses mempool.space testnet4).
-Switch network by setting `NETWORK=mainnet` or `NETWORK=testnet`.
+### Environment
 
----
+Create `.env` (optional):
 
-## How the Keystore Works (TL;DR)
+```bash
+PORT=3000
+NETWORK=testnet   # "testnet" (default) or "mainnet"
+```
 
-- When you **create** a wallet, you must provide a **password**.
-- The server stores:
-  - **Single wallet**: encrypted WIF (`AES-256-GCM`) + `bcrypt` hash of your password.
-  - **HD wallet**: encrypted mnemonic (same scheme) + derived address/xpub.
-- The server returns a **wallet `id`** and public details (address/xpub). No secrets are returned.
-- When you **send**/**time-lock**, you provide the **password** and the **walletId** (or fromAddress) to decrypt and sign.
-
-Keystore files live under `./keystore` via `node-localstorage`.
+> The UI badge reads the network; API uses mempool.space testnet4/mainnet accordingly.
 
 ---
 
-## UI Overview (index.html)
+## Project Structure
 
-- **Wallet Manager**: create Single/HD, import HD, label, set active, copy, delete.
-- **Active Address**: shows balance (confirmed/pending), quick refresh.
-- **Receive**: BIP21 URI + QR generator.
-- **Send**: enter `to`, `amount`, and **your wallet password** (required to sign).
-- **Tools**: Verify Tx, Time-Lock (enter unlock timestamp), Fee estimate.
-- **Console**: shows raw JSON responses.
+```
+.
+├─ index.html                 # Playground UI (served at "/")
+├─ src/
+│  ├─ server.ts               # Express app wiring (routes + index.html)
+│  ├─ controllers/            # All controllers (TS)
+│  ├─ routes/                 # Express routers (TS)
+│  └─ lib/
+│     ├─ net.ts               # NETWORK & mempool API host
+│     ├─ fees.ts              # Fee helpers (sat/vB, vsize)
+│     └─ keystore.ts          # AES-GCM + bcrypt, localstorage JSON
+├─ keystore/                  # Encrypted key records (gitignored)
+├─ scratch/                   # Legacy/demo storage (gitignored)
+├─ qrCodes/                   # Generated QR cache (gitignored)
+├─ .gitignore
+├─ package.json
+└─ tsconfig.json
+```
 
 ---
 
-## API Endpoints
+## Security Model (Important)
+
+- **Never** commits secrets: `keystore/`, `qrCodes/`, `scratch/` are **gitignored**.
+- Keystore records use:
+  - **AES-256-GCM** (random salt + 12-byte IV/nonce + auth tag)
+  - **scrypt** (password + salt) to derive encryption key
+  - **bcrypt** for server-side password verification
+- You **must supply the password** to unlock a wallet (for send / timelock / reimburse).
+- For production, consider **HSM/KMS** (Cloud KMS, HashiCorp Vault), proper DB, HTTPS, rate limiting, authN/authZ, audit logging, and _no plaintext mnemonic export_ endpoints.
+
+> This repo is for learning. **Don’t use as-is in production** without hardening.
+
+---
+
+## Scripts
+
+```json
+"scripts": {
+  "dev": "tsx watch src/server.ts",
+  "build": "tsc",
+  "start": "node dist/server.js"
+}
+```
+
+`src/server.ts` simply imports `app` and calls `listen`. You can also run `src/app.ts` directly (it includes a `require.main` guard).
+
+---
+
+## API Overview
+
+All responses are JSON. Errors return `{ error: string }` with appropriate status codes.
 
 ### Wallets
 
-#### Create Single Wallet
+#### Create single wallet (encrypted WIF)
 
-- **POST** `/wallet`
+```
+POST /wallet
+```
 
-- **Body**
+```json
+{ "password": "string" }
+```
 
-  ```json
-  { "password": "your-strong-password" }
-  ```
+**200**
 
-- **Response**
+```json
+{ "id": "keystoreId", "address": "tb1..." }
+```
 
-  ```json
-  { "id": "keystore-id", "address": "tb1..." }
-  ```
+#### Create HD wallet (encrypted mnemonic)
 
-#### Create HD Wallet
+```
+POST /wallet/hd
+```
 
-- **POST** `/wallet/hd`
+```json
+{ "password": "string" }
+```
 
-- **Body**
+**200**
 
-  ```json
-  { "password": "your-strong-password" }
-  ```
+```json
+{
+  "id": "keystoreId",
+  "xpub": "vpub/xpub...",
+  "address": "first derived / watch-only"
+}
+```
 
-- **Response**
+> HD derivation: BIP39 mnemonic → seed → BIP32 root (via `@scure/bip39` & `@scure/bip32`).
+> We store the **mnemonic encrypted**; return **xpub** for watch-only derivations.
 
-  ```json
-  { "id": "keystore-id", "xpub": "tpub...", "address": "tb1..." }
-  ```
+#### Import HD wallet (from mnemonic)
 
-#### Import HD from Mnemonic
+```
+POST /wallet/retrieve
+```
 
-- **POST** `/wallet/retrieve`
+```json
+{ "mnemonic": "word1 ... word12/24", "password": "string" }
+```
 
-- **Body**
+**200**
 
-  ```json
-  { "mnemonic": "abandon ability ...", "password": "your-strong-password" }
-  ```
+```json
+{ "id": "keystoreId", "xpub": "vpub/xpub...", "address": "watch-only root" }
+```
 
-- **Response**
+#### Create Multisig address
 
-  ```json
-  { "id": "keystore-id", "xpub": "tpub...", "address": "tb1..." }
-  ```
+```
+POST /wallet/multisig
+```
 
-#### Create Multisig
+```json
+{
+  "publicKeys": ["02...","03...", "..."],
+  "requiredSignatures": 2,
+  "script": "p2sh" | "p2wsh" | "p2sh-p2wsh"
+}
+```
 
-- **POST** `/wallet/multisig`
+**200**
 
-- **Body**
+```json
+{
+  "address": "2N... / tb1q... / etc",
+  "m": 2,
+  "n": 3
+}
+```
 
-  ```json
-  {
-    "publicKeys": ["pubkey1", "pubkey2", "pubkey3"],
-    "requiredSignatures": 2
-  }
-  ```
+#### Retrieve mnemonic (HD only)
 
-- **Response**
+```
+POST /wallet/mnemonic
+```
 
-  ```json
-  { "address": "2N...", "m": 2, "n": 3 }
-  ```
+```json
+{ "walletId": "keystoreId", "password": "string" }
+```
 
----
+**200**
 
-### Balance & Transactions
+```json
+{ "mnemonic": "word1 word2 ..." }
+```
 
-#### Get Balance
-
-- **GET** `/transactions/balance/:address`
-
-- **Response**
-
-  ```json
-  {
-    "confirmedBTC": "0.00500000",
-    "pendingBTC": "0.00000000",
-    "confirmedSats": 500000,
-    "pendingSats": 0
-  }
-  ```
-
-#### Get Transactions
-
-- **GET** `/transactions/:address`
-
-- **Response**
-
-  ```json
-  {
-    "transactions": [
-      /* mempool.space tx objects */
-    ]
-  }
-  ```
+> Exposing the mnemonic is **dangerous**; keep this endpoint **disabled** in production.
 
 ---
 
-### Sending, Time-Lock, Verify
+### Spending
 
-#### Send BTC
+> For all _send-like_ actions you must provide the **wallet password** and either:
+>
+> - `walletId` (preferred), or
+> - `fromAddress` (the server will look up the keystore record by address).
 
-- **POST** `/sendbtc`
+#### Send BTC (RBF)
 
-- **Body**
+```
+POST /sendbtc
+```
 
-  ```json
-  {
-    "to": "tb1...",
-    "amount": "0.001",
-    "password": "your-strong-password",
-    "walletId": "keystore-id" // preferred
-    // OR: "fromAddress": "tb1..."    // fallback selector
-  }
-  ```
+```json
+{
+  "to": "tb1...",
+  "amount": "0.001", // BTC string
+  "password": "string",
+  "walletId": "keystoreId", // preferred
+  "fromAddress": "tb1..." // optional fallback
+}
+```
 
-- **Response**
+**200**
 
-  ```json
-  { "txId": "hex-txid", "feeSatoshis": 1234, "feerateSatPerVb": 12.3 }
-  ```
+```json
+{
+  "txId": "hex",
+  "feeSatoshis": 1234,
+  "feerateSatPerVb": 5.4
+}
+```
 
-#### Create Time-Locked Transaction
+- Picks all UTXOs for `fromAddress`
+- Signs with decrypted WIF (single) or derived key (HD, first path)
+- RBF enabled (sequence `< 0xFFFFFFFE`)
 
-- **POST** `/timeLock`
+#### Time-locked transaction (build only)
 
-- **Body**
+```
+POST /timeLock
+```
 
-  ```json
-  {
-    "recipientAddress": "tb1...",
-    "amountInBTC": "0.001",
-    "timestamp": 1767225600, // Unix seconds in the future
-    "password": "your-strong-password",
-    "walletId": "keystore-id" // preferred
-    // OR: "fromAddress": "tb1..."        // fallback selector
-  }
-  ```
+```json
+{
+  "recipientAddress": "tb1...",
+  "amountInBTC": "0.001",
+  "timestamp": 1767225600, // Unix seconds in the future
+  "password": "string",
+  "walletId": "keystoreId",
+  "fromAddress": "tb1..."
+}
+```
 
-- **Response**
+**200**
 
-  ```json
-  {
-    "txHex": "020000...",
-    "lockTime": 1767225600,
-    "feeSatoshis": 1234,
-    "feerateSatPerVb": 12.3
-  }
-  ```
+```json
+{
+  "txHex": "02000000...",
+  "lockTime": 1767225600,
+  "feeSatoshis": 1234,
+  "feerateSatPerVb": 5.4
+}
+```
 
-#### Verify Transaction(s)
+> You can broadcast the hex later via mempool.space or your own broadcaster.
 
-- **POST** `/verifyTx`
+#### Reimburse BTC (same as send, semantic wrapper)
 
-- **Body**
+```
+POST /reimburseBtc/reimburseBitcoin
+```
 
-  ```json
-  { "txids": ["txid1", "txid2"] }
-  ```
+```json
+{
+  "to": "tb1...",
+  "amount": "0.001",
+  "password": "string",
+  "walletId": "keystoreId",
+  "fromAddress": "tb1..."
+}
+```
 
-- **Response**
+**200**
 
-  ```json
-  [
-    {
-      "txid": "txid1",
-      "confirmed": true,
-      "confirmations": 6,
-      "block_height": 123
-    },
-    { "txid": "txid2", "confirmed": false, "confirmations": 0 }
-  ]
-  ```
-
----
-
-### Fees, Address Validation, QR, Historical
-
-#### Estimate Fee
-
-- **GET** `/estimateFee`
-
-- **Response**
-
-  ```json
-  { "feerateSatPerVb": 14.2 }
-  ```
-
-#### Validate Bitcoin Address
-
-- **GET** `/validateAddress?address=tb1...`
-
-- **Response**
-
-  ```json
-  {
-    "address": "tb1...",
-    "isValid": true,
-    "network": "testnet",
-    "matchesConfiguredNetwork": true
-  }
-  ```
-
-#### Payment Request QR (BIP21)
-
-- **GET** `/payment/payment-request-qr?address=tb1...&amount=0.001&message=Invoice%20123`
-
-- **Response**
-
-  ```json
-  {
-    "success": true,
-    "id": "169...",
-    "bip21": "bitcoin:tb1...?amount=0.001&message=Invoice%20123",
-    "dataUrl": "data:image/png;base64,..." // QR image
-  }
-  ```
-
-#### Historical Data (CoinGecko)
-
-- **GET** `/historicalData?startDate=2024-01-01&endDate=2024-01-31`
-
-- **Response**
-
-  ```json
-  { "prices": [[timestamp, price], ...], "market_caps": [...], "total_volumes": [...] }
-  ```
-
----
-
-## cURL Quickies
-
-```bash
-# Create single wallet
-curl -X POST http://localhost:3000/wallet \
-  -H "Content-Type: application/json" \
-  -d '{"password":"secret"}'
-
-# Send BTC (use returned wallet id)
-curl -X POST http://localhost:3000/sendbtc \
-  -H "Content-Type: application/json" \
-  -d '{"to":"tb1...","amount":"0.0005","password":"secret","walletId":"<id>"}'
-
-# Time-lock (unlock at a future unix timestamp)
-curl -X POST http://localhost:3000/timeLock \
-  -H "Content-Type: application/json" \
-  -d '{"recipientAddress":"tb1...","amountInBTC":"0.0005","timestamp":1767225600,"password":"secret","walletId":"<id>"}'
+```json
+{
+  "txId": "hex",
+  "feeSatoshis": 1234,
+  "feerateSatPerVb": 5.4
+}
 ```
 
 ---
 
-## Testnet Coins
+### Read-only & Utilities
 
-Grab test BTC from a faucet (e.g. **mempool.space Testnet Faucet** or similar). Make sure your address prefix matches your network (`tb1...` for testnet).
+#### Address balance
+
+```
+GET /transactions/balance/:address
+```
+
+**200**
+
+```json
+{
+  "confirmedBTC": "0.00500000",
+  "pendingBTC": "0",
+  "confirmedSats": 500000,
+  "pendingSats": 0
+}
+```
+
+#### Address transactions (latest page)
+
+```
+GET /transactions/:address
+```
+
+**200**
+
+```json
+{
+  "transactions": [
+    /* mempool.space tx objects */
+  ]
+}
+```
+
+#### Verify txids (confirmed? confirmations?)
+
+```
+POST /verifyTx
+```
+
+```json
+{ "txids": ["hex1", "hex2"] } // or a single string
+```
+
+**200**
+
+```json
+[
+  {
+    "txid": "hex1",
+    "confirmed": true,
+    "confirmations": 3,
+    "block_height": 123456
+  },
+  { "txid": "hex2", "confirmed": false, "confirmations": 0 }
+]
+```
+
+#### Fee estimate (mean of 1..6 targets)
+
+```
+GET /estimateFee
+```
+
+**200**
+
+```json
+{ "feerateSatPerVb": 7.2 }
+```
+
+#### Validate address (basic)
+
+```
+GET /validateAddress?address=tb1...
+```
+
+**200**
+
+```json
+{
+  "address": "tb1...",
+  "isValid": true,
+  "network": "testnet",
+  "matchesConfiguredNetwork": true
+}
+```
+
+#### BIP21 + QR
+
+```
+GET /payment/payment-request-qr?address=tb1...&amount=0.001&message=Invoice%20123
+```
+
+**200**
+
+```json
+{
+  "success": true,
+  "id": "170...",
+  "bip21": "bitcoin:tb1...?amount=0.001&message=Invoice%20123",
+  "dataUrl": "data:image/png;base64,..."
+}
+```
+
+#### Historical price data (USD)
+
+```
+GET /historicalData?startDate=2024-01-01&endDate=2024-02-01
+```
+
+**200**
+
+```json
+{ "prices": [...], "market_caps": [...], "total_volumes": [...] }
+```
 
 ---
 
-## Notes & Limitations
+## The Playground UI (index.html)
 
-- HD sends currently sign from a single key; for real HD behavior, derive paths (e.g. `m/84'/1'/0'/0/0`) from the decrypted mnemonic. Easy follow-up.
-- The **reimburse** endpoint exists; you can adapt it to keystore like `sendbtc` for parity.
-- This playground keeps encrypted secrets on local disk. For production, use a proper DB/HSM/KMS and hardened auth.
+- **Wallet Manager** (right panel): create **Single** or **HD** wallets (requires password), import HD by mnemonic, rename, set active.
+- **Active address** (top left): copy/set manually; shows **confirmed/pending** balance.
+- **Receive**: BIP21 + **QR** generator.
+- **Send**: enter **password** to unlock keystore and sign.
+- **Time-lock**: enter **password** to build a future-spendable transaction (returns `txHex`).
+- **Console**: shows raw JSON for debugging.
+
+> The UI sends `walletId` (when available) and your **password** to unlock & sign.
 
 ---
 
-## Contributions
+## Libraries & Rationale
 
-PRs and issues welcome! Spot a bug or want a feature? File an issue or open a PR. 💛
+**Use**
+
+- `bitcoinjs-lib` — actively maintained, widely used
+- `@scure/bip39` & `@scure/bip32` — modern, audited primitives
+- `tiny-secp256k1` — native secp256k1 bindings for bitcoinjs
+- `qrcode`, `axios`, `zod` (optionally for input validation)
+
+**Avoid/Removed**
+
+- `bitcore-lib`, `bitcore-mnemonic` — older, not TypeScript-first
+- Any lib that’s unmaintained or with unclear security posture
+
+---
+
+## .gitignore (keystore safety)
+
+Already included:
+
+```
+bash
+
+
+CopyEdit
+node_modules/
+.env
+/scratch/
+/qrCodes/
+/keystore/
+**/.DS_Store
+```
+
+---
+
+## Deployment
+
+- **Do not** use GitHub Pages/GitHub Actions runners as a backend host.
+- Use a server/host that runs Node (Render, Fly.io, Railway, Heroku-like, VPS, Docker/K8s).
+- Enable HTTPS, add CORS rules if serving the UI from another origin, add auth/rate limiting.
+
+---
+
+## Troubleshooting
+
+- **“Invalid password”**: the keystore record was found, but bcrypt mismatch.
+- **“Address not for configured network”**: you’re on `NETWORK=testnet` but using mainnet addr (or vice versa).
+- **Insufficient balance / dust**: ensure amount > dust (~546 sats for legacy p2pkh; similar thresholds for segwit), and covers fee.
+- **UTXO empty**: fund your address using a testnet faucet.
+
+---
+
+## Example cURL
+
+```bash
+# Create single wallet
+curl -sX POST http://localhost:3000/wallet \
+  -H "content-type: application/json" \
+  -d '{"password":"hunter2"}'
+
+# Send BTC
+curl -sX POST http://localhost:3000/sendbtc \
+  -H "content-type: application/json" \
+  -d '{"to":"tb1q...","amount":"0.0002","password":"hunter2","walletId":"<id>"}'
+```
+
+---
+
+## Roadmap / Ideas
+
+- Derivation paths & account management for HD (BIP44/84/86)
+- PSBT import/export
+- Watch-only xpub accounts with server-side UTXO set
+- Replace localstorage with SQLite/Postgres
+- Optional Cloud KMS/HSM integration
+
+---
+
+### Disclaimer
+
+This project is for **educational purposes** only. Keys are stored on the server (encrypted), but a compromised server compromises funds. For production, use dedicated key management (HSM/KMS), remove mnemonic export, add authentication, logging, and monitoring.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
