@@ -1,7 +1,9 @@
-const axios = require("axios");
+import type { Request, Response } from "express";
+import axios from "axios";
 
-exports.getHistoricalData = async (req, res) => {
-  const { startDate, endDate } = req.query || {};
+export async function getHistoricalData(req: Request, res: Response) {
+  const startDate = String(req.query?.startDate || "");
+  const endDate = String(req.query?.endDate || "");
   if (!startDate || !endDate) {
     return res
       .status(400)
@@ -9,7 +11,7 @@ exports.getHistoricalData = async (req, res) => {
   }
   try {
     const { data } = await axios.get(
-      `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range`,
+      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range",
       {
         params: {
           vs_currency: "usd",
@@ -19,11 +21,8 @@ exports.getHistoricalData = async (req, res) => {
       }
     );
     res.json(data);
-  } catch (error) {
-    console.error(
-      "Error fetching historical data:",
-      error?.response?.data || error.message
-    );
+  } catch (error: any) {
+    console.error("historical data error:", error?.response?.data || error);
     res.status(500).json({ error: "Failed to fetch historical data" });
   }
-};
+}

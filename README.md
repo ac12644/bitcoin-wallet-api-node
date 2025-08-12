@@ -22,7 +22,9 @@ Welcome to **Learn Bitcoin Backend**, an interactive API + minimal UI for experi
 
 ## Project Checklist
 
-<img align="right" src="asset/img1.png" width="450" height="450" />
+<a href="https://github.com/ac12644/bitcoin-wallet-api-node/blob/main/asset/screenshot.png?raw=1" target="_blank" rel="noopener noreferrer">
+  <img align="right" src="asset/screenshot.png" width="450" height="450" alt="Project screenshot" />
+</a>
 
 - [x] Create single wallet (encrypted WIF)
 - [x] Create HD wallet (encrypted mnemonic)
@@ -56,7 +58,7 @@ npm install
 # export PORT=3000
 
 # 4) Run
-node app.js
+npm run dev
 ```
 
 Open http://localhost:3000 for the wallet-style UI.
