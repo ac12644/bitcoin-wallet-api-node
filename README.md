@@ -47,9 +47,6 @@ npm install
 # 2) Dev run (watch)
 npm run dev
 
-# 3) Or build + start
-npm run build
-npm start
 ```
 
 Open http://localhost:3000 to use the Playground UI.
